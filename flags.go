@@ -9,15 +9,9 @@ import (
 	"os"
 )
 
-type flags struct{}
-
-// Flags is used to represent flags not associated with a FlagSet.
-// To retrieve a flag value, use the Get method
-var Flags = flags{}
-
-// Get retrieves a value from a given flag name. If it is unable to dereference a
+// Flag retrieves a value from a given flag name. If it is unable to dereference a
 // value the function will return nil
-func (f flags) Get(name string) interface{} {
+func Flag(name string) interface{} {
 	val := flagvars.m["_"][name]
 	switch val.(type) {
 	case *bool:
@@ -33,17 +27,20 @@ func (f flags) Get(name string) interface{} {
 	return nil
 }
 
-type flagset struct {
+//FlagSet is just an empty accessor
+type FlagSet struct {
 	m map[string]interface{}
 }
 
 // Flagset retrieves a FlagSet given the name as provided in the required JSON file
-func Flagset(name string) flagset {
-	return flagset{flagvars.m[name]}
+// Why the weird difference in case? Because Godocs complains at public members of private structures!
+// Thus bloating up your IDEs and godocs with useless stuff. Yes this is a complaint
+func Flagset(name string) FlagSet {
+	return FlagSet{flagvars.m[name]}
 }
 
 // Get retrieves a flag value that is associated with a flag name on a parent FlagSet
-func (f flagset) Get(name string) interface{} {
+func (f FlagSet) Get(name string) interface{} {
 	val := f.m[name]
 	switch val.(type) {
 	case *bool:
