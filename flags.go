@@ -39,8 +39,8 @@ func Flagset(name string) FlagSet {
 	return FlagSet{flagvars.m[name]}
 }
 
-// Get retrieves a flag value that is associated with a flag name on a parent FlagSet
-func (f FlagSet) Get(name string) interface{} {
+// Flag retrieves a flag value that is associated with a flag name on a parent FlagSet
+func (f FlagSet) Flag(name string) interface{} {
 	val := f.m[name]
 	switch val.(type) {
 	case *bool:
