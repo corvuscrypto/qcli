@@ -1,4 +1,4 @@
-# qcli
+# qcli [![Travis](https://travis-ci.org/corvuscrypto/qcli.svg?branch=master)](https://travis-ci.org/corvuscrypto/qcli) [![GoDoc](https://godoc.org/github.com/corvuscrypto/qcli?status.svg)](https://godoc.org/github.com/corvuscrypto/qcli)
 Lightweight command line interface flag handling
 
 This is a project that I wanted to make because I was a bit tired of CLI helper libraries trying to do too much.
@@ -61,3 +61,7 @@ func main(){
 
 If you run that program with the flag --force or -force, you will see the output of `true`. Otherwise, it will return `false`.
 And that's what I call easy and q(uick)cli flag handling.
+
+## Just want to register basic flags and handle the value fetching yourself?
+No problemo soul brotha gopher! Just initialize it using the `_` operator. Then you can use the flag package 
+to visit visited flags and such :)
