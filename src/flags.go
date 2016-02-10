@@ -2,13 +2,75 @@ package qcli
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 )
+
+type flags struct{}
+
+// Flags is used to represent flags not associated with a FlagSet.
+// To retrieve a flag value, use the Get method
+var Flags = flags{}
+
+// Get retrieves a value from a given flag name. If it is unable to dereference a
+// value the function will return nil
+func (f flags) Get(name string) interface{} {
+	val := flagvars.m["_"][name]
+	switch val.(type) {
+	case *bool:
+		return *(val.(*bool))
+		break
+	case *float64:
+		return *(val.(*float64))
+		break
+	case *string:
+		return *(val.(*string))
+		break
+	}
+	return nil
+}
+
+type flagset struct {
+	m map[string]interface{}
+}
+
+// Flagset retrieves a FlagSet given the name as provided in the required JSON file
+func Flagset(name string) flagset {
+	return flagset{flagvars.m[name]}
+}
+
+// Get retrieves a flag value that is associated with a flag name on a parent FlagSet
+func (f flagset) Get(name string) interface{} {
+	val := f.m[name]
+	switch val.(type) {
+	case *bool:
+		return *(val.(*bool))
+		break
+	case *float64:
+		return *(val.(*float64))
+		break
+	case *string:
+		return *(val.(*string))
+		break
+	}
+	return nil
+}
+
+var flagvars struct {
+	m map[string]map[string]interface{}
+}
+
+func getArgIndex(name string) int {
+	for i, a := range os.Args {
+		if a == name {
+			return i
+		}
+	}
+	return -1
+}
 
 func initFlagSets(_flagsets interface{}) {
 	flagsets := _flagsets.([]interface{})
@@ -26,16 +88,19 @@ func initFlagSets(_flagsets interface{}) {
 		}
 
 		newFlagSet := flag.NewFlagSet(name, flag.ErrorHandling(errorHandling))
-		err := initFlags(flagset["flags"], newFlagSet)
+		flagvars.m[name] = make(map[string]interface{})
+		err := initFlags(flagset["flags"], name, newFlagSet)
 		if err != nil {
 			log.Fatalf("Unable to parse flagset at index %d: %s\n", i, err)
 		}
-		newFlagSet.Parse([]string{"force"})
+		if index := getArgIndex(name); index > -1 {
+			newFlagSet.Parse(os.Args[index:])
+		}
 	}
 }
 
-func initFlags(_flags interface{}, flagset ...*flag.FlagSet) error {
-	var err error = nil
+func initFlags(_flags interface{}, flagsetName string, flagset ...*flag.FlagSet) error {
+	var err error
 	var isFlagset bool
 	if len(flagset) > 0 {
 		isFlagset = true
@@ -48,62 +113,83 @@ func initFlags(_flags interface{}, flagset ...*flag.FlagSet) error {
 		usage, _ := flg["usage"].(string)
 		def := flg["default"]
 		if len(name) == 0 {
-			return errors.New(fmt.Sprintf("Unable to parse flag at index %d: No name specified!", i))
+			return fmt.Errorf("Unable to parse flag at index %d: No name specified!", i)
 		}
 
 		if len(_type) == 0 {
 			//do type switch
 			switch def.(type) {
 			case bool:
+				var b bool
 				if isFlagset {
-					flagset[0].Bool(name, def.(bool), usage)
+					flagvars.m[flagsetName][name] = &b
+					flagset[0].BoolVar(&b, name, def.(bool), usage)
 				} else {
-					flag.Bool(name, def.(bool), usage)
+					flag.BoolVar(&b, name, def.(bool), usage)
 				}
 				break
 			case float64:
+				var f float64
 				if isFlagset {
-					flagset[0].Float64(name, def.(float64), usage)
+					flagvars.m[flagsetName][name] = &f
+					flagset[0].Float64Var(&f, name, def.(float64), usage)
 				} else {
-					flag.Float64(name, def.(float64), usage)
+					flag.Float64Var(&f, name, def.(float64), usage)
 				}
 				break
 			case string:
+				var s string
 				if isFlagset {
-					flagset[0].String(name, def.(string), usage)
+					flagvars.m[flagsetName][name] = &s
+					flagset[0].StringVar(&s, name, def.(string), usage)
 				} else {
-					flag.String(name, def.(string), usage)
+					flag.StringVar(&s, name, def.(string), usage)
 				}
 				break
 			default:
-				return errors.New(fmt.Sprintf("Unable to parse flag at index %d: Unable to determine flag type!", i))
+				return fmt.Errorf("Unable to parse flag at index %d: Unable to determine flag type!", i)
 			}
 		} else {
 			//do value switch
 			switch _type {
 			case "bool":
+				if def == nil {
+					def = false
+				}
+				var b bool
 				if isFlagset {
-					flagset[0].Bool(name, def.(bool), usage)
+					flagvars.m[flagsetName][name] = &b
+					flagset[0].BoolVar(&b, name, def.(bool), usage)
 				} else {
-					flag.Bool(name, def.(bool), usage)
+					flag.BoolVar(&b, name, def.(bool), usage)
 				}
 				break
 			case "float64":
+				if def == nil {
+					def = 0
+				}
+				var f float64
 				if isFlagset {
-					flagset[0].Float64(name, def.(float64), usage)
+					flagvars.m[flagsetName][name] = &f
+					flagset[0].Float64Var(&f, name, def.(float64), usage)
 				} else {
-					flag.Float64(name, def.(float64), usage)
+					flag.Float64Var(&f, name, def.(float64), usage)
 				}
 				break
 			case "string":
+				if def == nil {
+					def = ""
+				}
+				var s string
 				if isFlagset {
-					flagset[0].String(name, def.(string), usage)
+					flagvars.m[flagsetName][name] = &s
+					flagset[0].StringVar(&s, name, def.(string), usage)
 				} else {
-					flag.String(name, def.(string), usage)
+					flag.StringVar(&s, name, def.(string), usage)
 				}
 				break
 			default:
-				return errors.New(fmt.Sprintf("Unable to parse flag at index %d: Unable to determine flag type!", i))
+				return fmt.Errorf("Unable to parse flag at index %d: Unable to determine flag type!", i)
 			}
 		}
 	}
@@ -112,16 +198,23 @@ func initFlags(_flags interface{}, flagset ...*flag.FlagSet) error {
 }
 
 func init() {
-	jsonFile, _ := os.Open("./flags.json")
+	flagvars.m = make(map[string]map[string]interface{})
+	jsonFile, err := os.Open("./flags.json")
+	if err != nil {
+		return
+	}
 	jsonData, _ := ioutil.ReadAll(jsonFile)
 	var flagMap map[string]interface{}
-	err := json.Unmarshal(jsonData, &flagMap)
+	err = json.Unmarshal(jsonData, &flagMap)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	//handle top-level flags
-	initFlags(flagMap["flags"])
+	flags := flagMap["flags"]
+	if flags != nil {
+		initFlags(flagMap["flags"], "")
+	}
 
 	//handle flagsets
 	initFlagSets(flagMap["flagsets"])
