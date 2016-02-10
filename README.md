@@ -55,7 +55,7 @@ import (
 )
 
 func main(){
-  fmt.Println(qcli.Flags.Get("force"))
+  fmt.Println(qcli.Flag("force"))
 }
 ```
 
